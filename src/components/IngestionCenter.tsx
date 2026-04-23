@@ -18,7 +18,8 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
-  Radio
+  Radio,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from "@/lib/utils";
@@ -297,11 +298,17 @@ STATED NEED: ${fieldReport.description}
                              variant="outline" 
                              size="sm" 
                              onClick={onToggleMonitoring}
+                             disabled={isAnalyzing}
                              className={`w-full h-9 rounded-lg text-[9px] uppercase tracking-widest font-black transition-all ${
                                isMonitoring ? 'border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white' : 'border-foreground/10'
                              }`}
                            >
-                             {isMonitoring ? 'Disable Monitor' : 'Enable Surveillance'}
+                             {isAnalyzing && isMonitoring ? (
+                               <span className="flex items-center gap-2">
+                                 <Loader2 className="h-3 w-3 animate-spin" />
+                                 Scanning...
+                               </span>
+                             ) : isMonitoring ? 'Disable Monitor' : 'Enable Surveillance'}
                            </Button>
                        </div>
 
@@ -324,7 +331,12 @@ STATED NEED: ${fieldReport.description}
                                isStreaming ? 'border-blue-500/30 text-blue-500 hover:bg-blue-500 hover:text-white' : 'border-foreground/10'
                              }`}
                            >
-                             {isStreaming ? 'Sever Stream' : 'Establish Link'}
+                             {isStreaming ? (
+                               <span className="flex items-center gap-2">
+                                 <Activity className="h-3 w-3 animate-pulse text-blue-500" />
+                                 Sever Stream
+                               </span>
+                             ) : 'Establish Link'}
                            </Button>
                        </div>
                     </div>

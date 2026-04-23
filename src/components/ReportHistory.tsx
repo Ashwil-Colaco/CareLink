@@ -48,7 +48,7 @@ const HistoryItem = React.memo(({
           </div>
           <div className="space-y-1">
             <h4 className={`text-[11px] font-bold uppercase tracking-widest leading-none truncate max-w-[200px] ${isSelected ? 'text-primary' : ''}`}>
-              {report.title}
+              {report?.title || 'UNTITLED REPORT'}
             </h4>
             <p className="text-[9px] opacity-40 line-clamp-1 leading-relaxed">
               {report.executiveSummary}
@@ -81,8 +81,10 @@ export function ReportHistory({ reports, onSelect, onSelectMultiple, selectedIds
     const term = deferredSearch.toLowerCase();
     if (!term) return reports;
     return reports.filter(r => 
-      r.title.toLowerCase().includes(term) ||
-      r.executiveSummary.toLowerCase().includes(term)
+      r && (
+        (r.title && r.title.toLowerCase().includes(term)) ||
+        (r.executiveSummary && r.executiveSummary.toLowerCase().includes(term))
+      )
     );
   }, [reports, deferredSearch]);
 

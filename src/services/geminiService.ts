@@ -1,7 +1,12 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { AnalysisReport, AnalysisSynthesis } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : (import.meta as any).env?.VITE_GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(apiKey || "");
+
+if (!apiKey && process.env.NODE_ENV === 'development') {
+  console.warn("CareLink: GEMINI_API_KEY is not defined. AI features will be unavailable.");
+}
 
 function truncateData(data: string, maxChars: number = 15000): string {
   if (data.length <= maxChars) return data;
@@ -12,22 +17,35 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, retries: number = 2): P
   try {
     return await fn();
   } catch (error: any) {
-    if (retries > 0 && (error.message?.includes("Rpc failed") || error.message?.includes("500"))) {
-      console.warn(`RPC Failure detected. Retrying with backoff... (${retries} left)`);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    if (retries > 0 && (error.message?.includes("Rpc failed") || error.message?.includes("500") || error.message?.includes("429"))) {
+      const waitTime = error.message?.includes("429") ? 3000 : 1500;
+      console.warn(`Gemini API issue detected (possibly quota). Retrying with backoff... (${retries} left)`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
       return retryWithBackoff(fn, retries - 1);
     }
     throw error;
   }
 }
 
+// Internal helper to call the specific model
+async function callGemini(prompt: string, isJson: boolean = false, useSearch: boolean = false) {
+  const model = genAI.getGenerativeModel({
+    model: "gemini-3.1-flash-lite-preview",
+    generationConfig: isJson ? { responseMimeType: "application/json" } : undefined,
+    tools: useSearch ? [{ googleSearchRetrieval: {} }] as any : undefined
+  });
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  return response.text();
+}
+
+
 export async function directGlobalScanAndAnalyze(region: string = "Global", keywords: string[] = []): Promise<{ rawSummary: string, report: AnalysisReport }> {
   return retryWithBackoff(async () => {
     const keywordStr = keywords.length > 0 ? `\n      Focus specifically on these keywords/themes: ${keywords.join(', ')}.` : '';
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Perform a deep web scan for the ${region} region to detect emerging crises.${keywordStr}
+
+    const prompt = `Perform a deep web scan for the ${region} region to detect emerging crises.${keywordStr}
       Focus on tracking:
       1. Recent medical supply chain failures or specialized equipment shortages.
       2. Infrastructure damage affecting humanitarian aid.
@@ -82,20 +100,17 @@ export async function directGlobalScanAndAnalyze(region: string = "Global", keyw
         ],
         "chartTitle": "str",
         "chartData": [{"label": "str", "value": 10}]
-      }`,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json"
-      }
-    });
+      }`;
+
+    const text = await callGemini(prompt, true, true);
 
     try {
-      const parsed = JSON.parse(response.text!);
+      const parsed = JSON.parse(text);
       const rawSummary = parsed.rawSurveillanceSummary || "Global surveillance identified critical insights implicitly.";
       delete parsed.rawSurveillanceSummary;
       return { rawSummary, report: parsed as AnalysisReport };
     } catch (error) {
-      console.error("Gemini Unified Scan Error:", error, response.text);
+      console.error("Gemini Unified Scan Error:", error, text);
       throw new Error("Unified intelligence recon encountered a structural anomaly.");
     }
   });
@@ -103,9 +118,7 @@ export async function directGlobalScanAndAnalyze(region: string = "Global", keyw
 
 export async function discoverRegionalIssues(region: string = "Global"): Promise<string> {
   return retryWithBackoff(async () => {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Perform a deep web scan for the ${region} region. 
+    const prompt = `Perform a deep web scan for the ${region} region. 
       Focus on tracking:
       1. Recent medical supply chain failures or specialized equipment shortages.
       2. Infrastructure damage affecting humanitarian aid (roads, bridges, temporary shelters).
@@ -113,23 +126,17 @@ export async function discoverRegionalIssues(region: string = "Global"): Promise
       4. Emerging health threats, localized disease outbreaks, or immunization gaps.
       
       Extract intelligence from recent news articles, NGO updates, and field reports.
-      Format the findings as a detailed field intelligence summary that can be processed by our impact engine.`,
-      config: {
-        tools: [{ googleSearch: {} }]
-      }
-    });
+      Format the findings as a detailed field intelligence summary that can be processed by our impact engine.`;
 
-    return response.text || "No critical issues detected in current surveillance cycle.";
+    return await callGemini(prompt, false, true);
   });
 }
 
 export async function analyzeData(rawData: string): Promise<AnalysisReport> {
   const truncatedData = truncateData(rawData, 12000);
-  
+
   return retryWithBackoff(async () => {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Analyze the following community field data for an NGO resource allocation platform.
+    const prompt = `Analyze the following community field data for an NGO resource allocation platform.
       
       Data:
       ${truncatedData}
@@ -155,14 +162,14 @@ export async function analyzeData(rawData: string): Promise<AnalysisReport> {
         "resourceGaps": ["list of what is missing"],
         "potentialImpact": {
           "projection": "analysis of outcome if resources are allocated",
-          "metrics": [{"label": "efficiency", "current": number, "projected": number}],
+          "metrics": [{"label": "efficiency", "current": 0, "projected": 0}],
           "timeline": [{"period": "short-term", "expectedOutcome": "improvement description"}]
         },
         "actionPlan": ["immediate logistics steps"],
-        "confidenceScore": number,
+        "confidenceScore": 85,
         "volunteerOptimization": {
           "suggestedNGOs": ["relevant partners"],
-          "volunteerMatchCount": number,
+          "volunteerMatchCount": 0,
           "skillsIdentified": ["medical", "logistics", "etc"]
         },
         "stakeholderViews": {
@@ -178,24 +185,22 @@ export async function analyzeData(rawData: string): Promise<AnalysisReport> {
           {
             "name": "string",
             "description": "string",
-            "min": number,
-            "max": number,
-            "current": number,
+            "min": 0,
+            "max": 100,
+            "current": 50,
             "unit": "string"
           }
         ],
         "chartTitle": "str",
-        "chartData": [{"label": "str", "value": number}]
-      }`,
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
+        "chartData": [{"label": "str", "value": 10}]
+      }`;
+
+    const text = await callGemini(prompt, true, false);
 
     try {
-      return JSON.parse(response.text);
+      return JSON.parse(text);
     } catch (error) {
-      console.error("Gemini Analysis Error:", error, response.text);
+      console.error("Gemini Analysis Error:", error, text);
       throw new Error("Social impact synthesis encountered a structural anomaly. Please refine your field data.");
     }
   });
@@ -204,9 +209,9 @@ export async function analyzeData(rawData: string): Promise<AnalysisReport> {
 export async function chatWithAnalyst(report: AnalysisReport, userMessage: string, history: { role: string, content: string }[]): Promise<string> {
   const contextLimit = 10000;
   const historyLimit = 6;
-  
+
   const reportContext = truncateData(JSON.stringify(report, null, 2), contextLimit);
-  
+
   const marketIntelContext = report.marketIntelligence ? JSON.stringify(report.marketIntelligence, null, 2) : "Not available";
   const strategicLeversContext = report.strategicLevers ? JSON.stringify(report.strategicLevers, null, 2) : "Not available";
 
@@ -216,9 +221,7 @@ export async function chatWithAnalyst(report: AnalysisReport, userMessage: strin
   }));
 
   return retryWithBackoff(async () => {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `You are the "CareLink" senior advisor for humanitarian resource allocation.
+    const prompt = `You are the "CareLink" senior advisor for humanitarian resource allocation.
       
       Report Context:
       ${reportContext}
@@ -239,23 +242,17 @@ export async function chatWithAnalyst(report: AnalysisReport, userMessage: strin
       1. Focus on humanitarian impact and resource efficiency.
       2. Be concise and operational.
       3. Use tools only if necessary for local regional insights.
-      4. Explicitly consider the Market Intelligence and Strategic Levers in your response.`,
-      config: {
-        tools: [{ googleSearch: {} }]
-      }
-    });
+      4. Explicitly consider the Market Intelligence and Strategic Levers in your response.`;
 
-    return response.text;
+    return await callGemini(prompt, false, true);
   });
 }
 
 export async function analyzeWebsite(siteData: { url: string, title: string, content: string }): Promise<AnalysisReport> {
   const truncatedContent = truncateData(siteData.content, 10000);
-  
+
   return retryWithBackoff(async () => {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Regional Impact Audit for: ${siteData.url}
+    const prompt = `Regional Impact Audit for: ${siteData.url}
       
       Material:
       Title: ${siteData.title}
@@ -282,14 +279,14 @@ export async function analyzeWebsite(siteData: { url: string, title: string, con
         "resourceGaps": ["list"],
         "potentialImpact": {
           "projection": "analysis description",
-          "metrics": [{"label": "impact", "current": number, "projected": number}],
+          "metrics": [{"label": "impact", "current": 0, "projected": 0}],
           "timeline": [{"period": "week 1", "expectedOutcome": "outcome"}]
         },
         "actionPlan": ["logistics steps"],
-        "confidenceScore": number,
+        "confidenceScore": 85,
         "volunteerOptimization": {
           "suggestedNGOs": ["relevant partners"],
-          "volunteerMatchCount": number,
+          "volunteerMatchCount": 0,
           "skillsIdentified": ["medical", "logistics", "etc"]
         },
         "stakeholderViews": {
@@ -305,24 +302,22 @@ export async function analyzeWebsite(siteData: { url: string, title: string, con
           {
             "name": "string",
             "description": "string",
-            "min": number,
-            "max": number,
-            "current": number,
+            "min": 0,
+            "max": 100,
+            "current": 50,
             "unit": "string"
           }
         ],
         "chartTitle": "str",
-        "chartData": [{"label": "str", "value": number}]
-      }`,
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
+        "chartData": [{"label": "str", "value": 10}]
+      }`;
+
+    const text = await callGemini(prompt, true, true);
 
     try {
-      return JSON.parse(response.text);
+      return JSON.parse(text);
     } catch (error) {
-      console.error("Gemini Website Analysis Error:", error, response.text);
+      console.error("Gemini Website Analysis Error:", error, text);
       throw new Error("Regional impact audit encountered a protocol error.");
     }
   });
@@ -336,9 +331,7 @@ export async function synthesizeReports(reports: AnalysisReport[]): Promise<Anal
   }));
 
   return retryWithBackoff(async () => {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `CareLink Regional Synthesis Hub.
+    const prompt = `CareLink Regional Synthesis Hub.
       Data:
       ${JSON.stringify(processedReports, null, 2)}
       
@@ -353,18 +346,15 @@ export async function synthesizeReports(reports: AnalysisReport[]): Promise<Anal
         "divergencePoints": ["list of priority conflicts or data gaps"],
         "commonTrends": ["consistent regional trends"],
         "unifiedActionPlan": ["unified logistics and response steps"],
-        "combinedRiskScore": number
-      }`,
-      config: {
-        responseMimeType: "application/json"
-      }
-    });
+        "combinedRiskScore": 85
+      }`;
+
+    const text = await callGemini(prompt, true, false);
 
     try {
-      const result = JSON.parse(response.text);
-      return result;
+      return JSON.parse(text);
     } catch (error) {
-      console.error("Synthesis failed:", error, response.text);
+      console.error("Synthesis failed:", error, text);
       throw new Error("Neural hub synthesis failure.");
     }
   });

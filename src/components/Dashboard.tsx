@@ -604,44 +604,7 @@ STATED REQUIREMENTS:
             </AnimatePresence>
 
             <AnimatePresence mode="wait">
-              {!report && !isAnalyzing ? (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-foreground/5 bg-foreground/[0.01] ${isPhoneMode ? 'h-[300px]' : 'h-[500px]'}`}
-                >
-                  <div className={`flex items-center justify-center rounded-full bg-foreground/5 border border-foreground/5 ${isPhoneMode ? 'mb-4 h-14 w-14' : 'mb-6 h-20 w-20'}`}>
-                    <FileText className={`opacity-10 ${isPhoneMode ? 'h-6 w-6' : 'h-8 w-8'}`} />
-                  </div>
-                  <h3 className={`${isPhoneMode ? 'text-lg' : 'text-xl'} font-bold opacity-30 uppercase tracking-widest text-center`}>
-                    {isPhoneMode ? "Awaiting Data" : "Awaiting Intelligence Feed"}
-                  </h3>
-                  {!isPhoneMode && (
-                    <p className="max-w-xs text-center text-[11px] opacity-20 uppercase tracking-widest mt-4 leading-relaxed">
-                      Input raw data or a target URL to generate a decision-ready intelligence report.
-                    </p>
-                  )}
-                </motion.div>
-              ) : isAnalyzing ? (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className={`flex flex-col items-center justify-center ${isPhoneMode ? 'h-[300px]' : 'h-[500px]'}`}
-                >
-                  <div className="relative mb-8">
-                    <Loader2 className={`${isPhoneMode ? 'h-12 w-12' : 'h-16 w-16'} animate-spin opacity-10`} />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Zap className={`${isPhoneMode ? 'h-4 w-4' : 'h-6 w-6'} text-primary animate-pulse`} />
-                    </div>
-                  </div>
-                  <h3 className={`${isPhoneMode ? 'text-lg' : 'text-xl'} font-bold opacity-30 uppercase tracking-widest`}>Synthesizing</h3>
-                  <p className="animate-pulse font-mono text-[10px] opacity-20 uppercase tracking-[0.5em] mt-4">PROBING...</p>
-                </motion.div>
-              ) : (
+              {(report || archivedReports.length > 0) ? (
                 <motion.div
                   key="report"
                   initial={{ opacity: 0, y: 15 }}
@@ -664,6 +627,43 @@ STATED REQUIREMENTS:
                     liveStreamData={liveStreamData}
                   />
                 </motion.div>
+              ) : isAnalyzing ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className={`flex flex-col items-center justify-center ${isPhoneMode ? 'h-[300px]' : 'h-[500px]'}`}
+                >
+                  <div className="relative mb-8">
+                    <Loader2 className={`${isPhoneMode ? 'h-12 w-12' : 'h-16 w-16'} animate-spin opacity-10`} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Zap className={`${isPhoneMode ? 'h-4 w-4' : 'h-6 w-6'} text-primary animate-pulse`} />
+                    </div>
+                  </div>
+                  <h3 className={`${isPhoneMode ? 'text-lg' : 'text-xl'} font-bold opacity-30 uppercase tracking-widest`}>Synthesizing</h3>
+                  <p className="animate-pulse font-mono text-[10px] opacity-20 uppercase tracking-[0.5em] mt-4">PROBING...</p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-foreground/5 bg-foreground/[0.01] ${isPhoneMode ? 'h-[300px]' : 'h-[500px]'}`}
+                >
+                  <div className={`flex items-center justify-center rounded-full bg-foreground/5 border border-foreground/5 ${isPhoneMode ? 'mb-4 h-14 w-14' : 'mb-6 h-20 w-20'}`}>
+                    <FileText className={`opacity-10 ${isPhoneMode ? 'h-6 w-6' : 'h-8 w-8'}`} />
+                  </div>
+                  <h3 className={`${isPhoneMode ? 'text-lg' : 'text-xl'} font-bold opacity-30 uppercase tracking-widest text-center`}>
+                    {isPhoneMode ? "Awaiting Data" : "Awaiting Intelligence Feed"}
+                  </h3>
+                  {!isPhoneMode && (
+                    <p className="max-w-xs text-center text-[11px] opacity-20 uppercase tracking-widest mt-4 leading-relaxed">
+                      Input raw data or a target URL to generate a decision-ready intelligence report.
+                    </p>
+                  )}
+                </motion.div>
               )}
             </AnimatePresence>
           </section>
@@ -673,7 +673,7 @@ STATED REQUIREMENTS:
       <footer className={`mx-auto w-full border-t border-foreground/5 px-6 ${isPhoneMode ? 'py-10' : 'py-12 max-w-5xl'}`}>
         <div className={`flex flex-col items-center justify-between gap-6 opacity-30 ${isPhoneMode ? '' : 'md:flex-row'}`}>
           <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-center">
-            {isPhoneMode ? "CareLink AI" : "Powered by Gemini 3.1 Pro • CareLink Intelligence Systems"} &bull; {new Date().getFullYear()}
+            {isPhoneMode ? "CareLink AI" : "Powered by Gemini 3.1 Flash Lite • CareLink Intelligence Systems"} &bull; {new Date().getFullYear()}
           </p>
           <div className={`flex items-center gap-6 text-[9px] uppercase tracking-widest font-bold ${isPhoneMode ? 'flex-wrap justify-center' : ''}`}>
             <span>Privacy</span>

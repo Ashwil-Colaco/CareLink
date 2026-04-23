@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0006001402",
-  "appId": "1:969150470952:web:39c0420d1cefd34634ce1d",
-  "apiKey": "AIzaSyA1WkRADZHcwP0TE8q23uNah2FlSkqLaf4",
-  "authDomain": "gen-lang-client-0006001402.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-667de510-07e6-4f5f-b1fb-99323c38c502",
-  "storageBucket": "gen-lang-client-0006001402.firebasestorage.app",
-  "messagingSenderId": "969150470952",
-  "measurementId": ""
+  "projectId": "carelink-2899e",
+  "appId": "1:592951794437:web:4deadd10efe0688bb3356c",
+  "apiKey": "AIzaSyAwJLT5YNI5hFOwgssc-G7zQWMim3ZyYrI",
+  "authDomain": "carelink-2899e.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "carelink-2899e.firebasestorage.app",
+  "messagingSenderId": "592951794437",
+  "measurementId": "G-WYQ5LHGJW4"
 }

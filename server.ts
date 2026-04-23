@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -12,7 +13,9 @@ import { Server } from "socket.io";
 admin.initializeApp();
 const dbAdmin = admin.firestore();
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+// Note: Headless monitoring via LLM is restricted to frontend execution 
+// to ensure proper API key handling in this environment.
+// Backend AI initialization removed to prevent startup errors.
 
 async function startServer() {
   const app = express();
