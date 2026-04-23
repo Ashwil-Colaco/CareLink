@@ -4,7 +4,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import axios from "axios";
 import * as cheerio from "cheerio";
-import { GoogleGenAI, Type } from "@@google/generative-ai";
+import { GoogleGenAI, Type } from "@google/generative-ai";
 import admin from "firebase-admin";
 import http from "http";
 import { Server } from "socket.io";
