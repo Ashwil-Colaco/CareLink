@@ -63,5 +63,8 @@
   "preview": "vite preview",
   "clean": "rm -rf dist",
   "lint": "tsc --noEmit"
+  },
+  "engines": {
+  "node": ">=20.0.0"
   }
 }
